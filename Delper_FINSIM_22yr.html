@@ -1,0 +1,655 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Delper GCCP — 22-Year Financial Simulation</title>
+<style>
+:root{
+  --gold:#c9963a;--teal:#0b8c72;--navy:#0d1f3c;--green:#4ade80;
+  --blue:#60a5fa;--purple:#a78bfa;--coral:#f87171;--amber:#fbbf24;
+  --bg:#0d1117;--card:#161b22;--border:rgba(255,255,255,.1);
+  --txt:#e2e8f0;--dim:rgba(255,255,255,.55);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--txt);font-family:'Segoe UI',Arial,sans-serif;font-size:13px;min-height:100vh}
+
+/* ── HEADER ── */
+.hdr{background:linear-gradient(135deg,#0d1f3c,#1a1a00);border-bottom:2px solid var(--gold);padding:1rem 1.5rem;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.75rem}
+.hdr-title{font-size:1.1rem;font-weight:800;color:var(--gold);letter-spacing:.04em}
+.hdr-sub{font-size:.7rem;color:var(--dim);margin-top:.2rem}
+.run-btn{background:linear-gradient(135deg,var(--gold),#8b6520);color:#fff;border:none;padding:.6rem 1.4rem;border-radius:6px;font-size:.85rem;font-weight:700;cursor:pointer;letter-spacing:.05em;transition:opacity .2s;white-space:nowrap}
+.run-btn:hover{opacity:.85}
+.run-btn:disabled{opacity:.4;cursor:not-allowed}
+.speed-wrap{display:flex;align-items:center;gap:.5rem;font-size:.72rem;color:var(--dim)}
+.speed-wrap select{background:#1e1e1e;color:var(--txt);border:1px solid var(--border);border-radius:4px;padding:.25rem .5rem;font-size:.72rem}
+
+/* ── SEED BANNER ── */
+.seed-banner{background:rgba(201,150,58,.12);border:1px solid rgba(201,150,58,.3);border-radius:8px;padding:.75rem 1rem;margin:1rem 1.5rem;font-size:.75rem;color:#f5d78a}
+
+/* ── LAYOUT ── */
+.main{display:grid;grid-template-columns:1fr 1fr 1fr;gap:1rem;padding:1rem 1.5rem}
+@media(max-width:900px){.main{grid-template-columns:1fr}}
+.full-row{grid-column:1/-1}
+
+/* ── PANEL ── */
+.panel{background:var(--card);border:1px solid var(--border);border-radius:8px;overflow:hidden}
+.panel-hdr{padding:.6rem .85rem;font-size:.68rem;font-weight:800;letter-spacing:.08em;text-transform:uppercase;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:.5rem}
+.ph-spv{background:rgba(96,165,250,.1);color:var(--blue)}
+.ph-reg{background:rgba(74,222,128,.1);color:var(--green)}
+.ph-hc{background:rgba(201,150,58,.1);color:var(--gold)}
+.ph-gkb{background:rgba(167,139,250,.1);color:var(--purple)}
+.ph-alert{background:rgba(251,191,36,.08);color:var(--amber)}
+.ph-infra{background:rgba(11,140,114,.1);color:var(--teal)}
+
+/* ── KPI CARDS ── */
+.kpi-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:.5rem;padding:.75rem}
+.kpi{background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:6px;padding:.55rem .65rem;text-align:center}
+.kpi-v{font-size:.95rem;font-weight:800;color:var(--gold);font-variant-numeric:tabular-nums}
+.kpi-l{font-size:.6rem;color:var(--dim);margin-top:.15rem}
+.kpi-v.green{color:var(--green)}
+.kpi-v.blue{color:var(--blue)}
+.kpi-v.purple{color:var(--purple)}
+.kpi-v.amber{color:var(--amber)}
+.kpi-v.red{color:var(--coral)}
+
+/* ── YEAR TICKER ── */
+.year-display{text-align:center;padding:.5rem;border-bottom:1px solid var(--border)}
+.yr-num{font-size:2.2rem;font-weight:900;color:var(--gold);line-height:1}
+.yr-label{font-size:.65rem;color:var(--dim);margin-top:.1rem}
+
+/* ── PROGRESS BAR ── */
+.prog-wrap{padding:.5rem .85rem;border-bottom:1px solid var(--border)}
+.prog-label{font-size:.62rem;color:var(--dim);margin-bottom:.25rem;display:flex;justify-content:space-between}
+.prog-bar{height:6px;background:rgba(255,255,255,.08);border-radius:3px;overflow:hidden}
+.prog-fill{height:100%;border-radius:3px;transition:width .4s ease;background:linear-gradient(90deg,var(--teal),var(--gold))}
+
+/* ── ALERTS ── */
+.alert-box{padding:.6rem .85rem;max-height:340px;overflow-y:auto}
+.alert{display:flex;gap:.5rem;align-items:flex-start;padding:.45rem .55rem;border-radius:5px;margin-bottom:.4rem;font-size:.7rem;line-height:1.45;border-left:3px solid transparent;animation:fadeIn .3s ease}
+@keyframes fadeIn{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:translateY(0)}}
+.alert.seed  {background:rgba(201,150,58,.12);border-color:var(--gold);color:#f5d78a}
+.alert.ipo   {background:rgba(96,165,250,.1); border-color:var(--blue);color:#bfdbfe}
+.alert.fpo   {background:rgba(96,165,250,.08);border-color:var(--blue);color:#bfdbfe}
+.alert.fpo_rev{background:rgba(74,222,128,.08);border-color:var(--green);color:#bbf7d0}
+.alert.fpo_final{background:rgba(74,222,128,.12);border-color:var(--green);color:#bbf7d0;font-weight:700}
+.alert.rev   {background:rgba(74,222,128,.06);border-color:var(--teal);color:#99f6e4}
+.alert.rev_retro{background:rgba(11,140,114,.1);border-color:var(--teal);color:#6ee7b7}
+.alert.debt_free{background:rgba(167,139,250,.12);border-color:var(--purple);color:#ddd6fe;font-weight:700}
+.alert.terminal {background:rgba(201,150,58,.18);border-color:var(--gold);color:#fef08a;font-weight:800}
+.alert.ops   {background:rgba(255,255,255,.04);border-color:rgba(255,255,255,.15);color:var(--dim)}
+.alert.div_event{background:rgba(74,222,128,.06);border-color:var(--green);color:#bbf7d0}
+.alert.tax_event{background:rgba(248,113,113,.08);border-color:var(--coral);color:#fecaca}
+.alert-yr{font-size:.62rem;font-weight:800;min-width:28px;color:var(--gold);opacity:.8}
+.alert-clr{text-align:center;padding:.4rem;font-size:.65rem;color:var(--dim);border-top:1px solid var(--border)}
+.no-alerts{text-align:center;color:var(--dim);font-size:.72rem;padding:1.5rem}
+
+/* ── FLOW TABLE ── */
+.ftable{width:100%;border-collapse:collapse;font-size:.68rem}
+.ftable th{background:rgba(255,255,255,.06);padding:.35rem .5rem;text-align:right;color:var(--dim);font-weight:600;white-space:nowrap}
+.ftable th:first-child{text-align:left}
+.ftable td{padding:.3rem .5rem;border-bottom:1px solid rgba(255,255,255,.05);text-align:right;font-variant-numeric:tabular-nums}
+.ftable td:first-child{text-align:left;color:var(--dim);font-weight:600}
+.ftable tr:hover td{background:rgba(255,255,255,.03)}
+.ftable tr.active-yr td{background:rgba(201,150,58,.08)!important;color:var(--gold)!important;font-weight:700}
+.pos{color:var(--green)}.neg{color:var(--coral)}.neu{color:var(--blue)}
+
+/* ── INFRA GRID ── */
+.infra-grid{display:grid;grid-template-columns:1fr 1fr;gap:.4rem;padding:.6rem}
+.infra-item{background:rgba(255,255,255,.03);border:1px solid var(--border);border-radius:5px;padding:.4rem .6rem;font-size:.66rem}
+.infra-icon{font-size:.9rem;margin-bottom:.15rem}
+.infra-name{font-weight:700;color:var(--teal);font-size:.67rem}
+.infra-desc{color:var(--dim);font-size:.63rem;margin-top:.1rem}
+
+/* ── CITY MAP ── */
+.city-bar{padding:.5rem .85rem}
+.city-label{font-size:.65rem;color:var(--dim);margin-bottom:.2rem;display:flex;justify-content:space-between}
+.city-track{height:10px;background:rgba(255,255,255,.06);border-radius:5px;overflow:hidden;margin-bottom:.25rem;position:relative}
+.city-fill-smart{height:100%;background:linear-gradient(90deg,#1d4ed8,var(--blue));transition:width .4s ease;border-radius:5px;float:left}
+.city-fill-retro{height:100%;background:linear-gradient(90deg,var(--teal),#6ee7b7);transition:width .4s ease;border-radius:5px;float:left}
+
+/* ── USER BAR ── */
+.user-bar{height:8px;background:rgba(255,255,255,.06);border-radius:4px;overflow:hidden;margin:.2rem 0}
+.user-fill{height:100%;background:linear-gradient(90deg,var(--purple),#ec4899);transition:width .5s ease;border-radius:4px}
+
+/* ── DPR PRICE ── */
+.dpr-display{text-align:center;padding:.5rem;border-bottom:1px solid var(--border)}
+.dpr-val{font-size:1.4rem;font-weight:900;color:var(--purple)}
+.dpr-lbl{font-size:.62rem;color:var(--dim)}
+
+/* ── FLOW ARROWS ── */
+.flow-diagram{padding:.6rem .85rem;display:flex;flex-direction:column;gap:.3rem;font-size:.68rem}
+.flow-row{display:flex;align-items:center;gap:.4rem}
+.flow-box{background:rgba(255,255,255,.05);border:1px solid var(--border);border-radius:4px;padding:.3rem .55rem;flex:1;text-align:center}
+.flow-arrow{color:var(--gold);font-size:.9rem;flex-shrink:0}
+.flow-pct{color:var(--dim);font-size:.62rem}
+
+/* ── STATUS DOT ── */
+.status{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:.3rem;animation:pulse 2s infinite}
+.status.active{background:var(--green)}
+.status.idle{background:rgba(255,255,255,.2)}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+
+/* ── SCROLLBAR ── */
+::-webkit-scrollbar{width:4px;height:4px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:rgba(255,255,255,.15);border-radius:2px}
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="hdr">
+  <div>
+    <div class="hdr-title">⬡ DELPER GCCP — 22-Year Bottom-Up Financial Simulation</div>
+    <div class="hdr-sub">SPV → Regional HoldCo → Singapore HoldCo → GK Bharta (Dubai) · DPR Token Ecosystem · 60 Countries · 4,400 Cities · 6B Users</div>
+  </div>
+  <div style="display:flex;gap:.75rem;align-items:center;flex-wrap:wrap">
+    <div class="speed-wrap">
+      Speed: <select id="speed">
+        <option value="1500">Slow (1.5s/yr)</option>
+        <option value="800" selected>Normal (0.8s/yr)</option>
+        <option value="300">Fast (0.3s/yr)</option>
+        <option value="80">Turbo (0.08s/yr)</option>
+      </select>
+    </div>
+    <button class="run-btn" id="runBtn" onclick="runSimulation()">▶ RUN SIMULATION</button>
+  </div>
+</div>
+
+<!-- SEED BANNER -->
+<div class="seed-banner">
+  💰 <strong>Seed Capital:</strong> USD 2.07 Billion · GK Bharta, Dubai → Delper GCCP Holdings Pte Ltd, Singapore ·
+  <strong>Medium of Exchange:</strong> DPR (Delper Token) across all SPVs, Regional HoldCos, and HoldCo ·
+  <strong>SPV Structure:</strong> 60 Country SPVs → 7 Regional HoldCos → 1 Singapore Master HoldCo → GK Bharta
+</div>
+
+<!-- MAIN GRID -->
+<div class="main">
+
+  <!-- ── COL 1: Year + Users + Cities ── -->
+  <div style="display:flex;flex-direction:column;gap:1rem">
+
+    <!-- Year Display -->
+    <div class="panel">
+      <div class="panel-hdr ph-hc">⏱ Programme Year</div>
+      <div class="year-display">
+        <div class="yr-num" id="yrNum">—</div>
+        <div class="yr-label" id="yrLabel">Press RUN to start</div>
+      </div>
+      <div class="prog-wrap">
+        <div class="prog-label"><span>Programme progress</span><span id="progPct">0%</span></div>
+        <div class="prog-bar"><div class="prog-fill" id="progFill" style="width:0%"></div></div>
+      </div>
+      <div class="kpi-grid" style="grid-template-columns:1fr 1fr">
+        <div class="kpi"><div class="kpi-v amber" id="phaseLabel">—</div><div class="kpi-l">Phase</div></div>
+        <div class="kpi"><div class="kpi-v" id="breakEvenStatus" style="font-size:.72rem">Pending</div><div class="kpi-l">GK Bharta Breakeven</div></div>
+      </div>
+    </div>
+
+    <!-- User Onboarding -->
+    <div class="panel">
+      <div class="panel-hdr ph-gkb">👥 User Onboarding — 6B in 4 Years</div>
+      <div class="city-bar">
+        <div class="city-label"><span>Platform Users</span><span id="userCount">0</span></div>
+        <div class="user-bar"><div class="user-fill" id="userFill" style="width:0%"></div></div>
+        <div class="city-label" style="margin-top:.4rem"><span>DPR Wallets Activated</span><span id="walletCount">0</span></div>
+        <div class="user-bar"><div class="user-fill" id="walletFill" style="width:0%;background:linear-gradient(90deg,var(--teal),var(--green))"></div></div>
+      </div>
+      <div class="kpi-grid">
+        <div class="kpi"><div class="kpi-v green" id="residentCount">0</div><div class="kpi-l">Residents (B)</div></div>
+        <div class="kpi"><div class="kpi-v blue" id="txPerSec">0</div><div class="kpi-l">DPR TPS</div></div>
+        <div class="kpi"><div class="kpi-v purple" id="dprPrice">$0</div><div class="kpi-l">DPR Price</div></div>
+      </div>
+    </div>
+
+    <!-- City Progress -->
+    <div class="panel">
+      <div class="panel-hdr ph-spv">🏙️ City Programme — 4,400 Terminal</div>
+      <div class="city-bar">
+        <div class="city-label"><span>Smart Cities Operational</span><span id="smartCount">0 / 2,200</span></div>
+        <div class="city-track">
+          <div class="city-fill-smart" id="smartFill" style="width:0%"></div>
+        </div>
+        <div class="city-label"><span>Retrofit Cities Earning</span><span id="retroCount">0 / 2,200</span></div>
+        <div class="city-track">
+          <div class="city-fill-retro" id="retroFill" style="width:0%"></div>
+        </div>
+        <div class="city-label"><span style="font-weight:700;color:#fff">Total Cities Under Management</span><span id="totalCities" style="color:var(--gold);font-weight:800">0 / 4,400</span></div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ── COL 2: SPV + Regional + HoldCo flow ── -->
+  <div style="display:flex;flex-direction:column;gap:1rem">
+
+    <!-- Flow Diagram -->
+    <div class="panel">
+      <div class="panel-hdr ph-hc">💹 Profit Flow — DPR Ecosystem</div>
+      <div class="flow-diagram">
+        <div class="flow-row">
+          <div class="flow-box" style="border-color:rgba(96,165,250,.4);color:var(--blue)">
+            <div style="font-size:.62rem;color:var(--dim)">60 Country SPVs</div>
+            <div style="font-weight:800" id="flowSpvRev">$0T</div>
+            <div style="font-size:.6rem;color:var(--dim)">Gross Revenue</div>
+          </div>
+        </div>
+        <div class="flow-row" style="justify-content:center">
+          <div style="color:var(--dim);font-size:.62rem">3% EBITDA → 25% Tax → PAT → 97% Dividend ↓</div>
+        </div>
+        <div class="flow-row">
+          <div class="flow-box" style="border-color:rgba(74,222,128,.4);color:var(--green)">
+            <div style="font-size:.62rem;color:var(--dim)">7 Regional HoldCos</div>
+            <div style="font-weight:800" id="flowSpvDiv">$0T</div>
+            <div style="font-size:.6rem;color:var(--dim)">Dividend received from SPVs</div>
+          </div>
+        </div>
+        <div class="flow-row" style="justify-content:center">
+          <div style="color:var(--dim);font-size:.62rem">5% EBITDA on flow → 25% Tax → PAT → 97% fwd ↓</div>
+        </div>
+        <div class="flow-row">
+          <div class="flow-box" style="border-color:rgba(201,150,58,.4);color:var(--gold)">
+            <div style="font-size:.62rem;color:var(--dim)">Singapore Master HoldCo</div>
+            <div style="font-weight:800" id="flowHcPat">$0T</div>
+            <div style="font-size:.6rem;color:var(--dim)">PAT after tax</div>
+          </div>
+        </div>
+        <div class="flow-row" style="justify-content:center">
+          <div style="color:var(--dim);font-size:.62rem">5% retained reserve → 95% dividend ↓</div>
+        </div>
+        <div class="flow-row">
+          <div class="flow-box" style="border-color:rgba(167,139,250,.4);color:var(--purple)">
+            <div style="font-size:.62rem;color:var(--dim)">GK Bharta (Dubai)</div>
+            <div style="font-weight:800" id="flowGkbDiv">$0T</div>
+            <div style="font-size:.6rem;color:var(--dim)">Dividend received · Reinvested until breakeven</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SPV KPIs -->
+    <div class="panel">
+      <div class="panel-hdr ph-spv">🏢 Country SPV Layer (All 60)</div>
+      <div class="kpi-grid">
+        <div class="kpi"><div class="kpi-v blue" id="spvRev">$0T</div><div class="kpi-l">Gross Revenue</div></div>
+        <div class="kpi"><div class="kpi-v" id="spvEbitda">$0T</div><div class="kpi-l">EBITDA (3%)</div></div>
+        <div class="kpi"><div class="kpi-v green" id="spvPat">$0T</div><div class="kpi-l">PAT (after tax)</div></div>
+        <div class="kpi"><div class="kpi-v amber" id="spvDiv">$0T</div><div class="kpi-l">Dividend Up (97%)</div></div>
+        <div class="kpi"><div class="kpi-v" id="spvReserve">$0T</div><div class="kpi-l">SPV Reserve (3%)</div></div>
+        <div class="kpi"><div class="kpi-v blue" id="spvTax">$0T</div><div class="kpi-l">Tax Paid (25%)</div></div>
+      </div>
+    </div>
+
+    <!-- HoldCo KPIs -->
+    <div class="panel">
+      <div class="panel-hdr ph-hc">🏦 Singapore Master HoldCo</div>
+      <div class="kpi-grid">
+        <div class="kpi"><div class="kpi-v" id="hcEbitda">$0T</div><div class="kpi-l">EBITDA (5%)</div></div>
+        <div class="kpi"><div class="kpi-v green" id="hcPat">$0T</div><div class="kpi-l">PAT (after tax)</div></div>
+        <div class="kpi"><div class="kpi-v amber" id="hcDiv">$0T</div><div class="kpi-l">Div to GK Bharta (95%)</div></div>
+        <div class="kpi"><div class="kpi-v" id="hcReserve">$0T</div><div class="kpi-l">HC Reserve (5%)</div></div>
+        <div class="kpi"><div class="kpi-v purple" id="gkbCumDiv">$0T</div><div class="kpi-l">GK Bharta Cumulative</div></div>
+        <div class="kpi"><div class="kpi-v" id="gkbStatus" style="font-size:.72rem">Reinvesting</div><div class="kpi-l">GK Bharta Status</div></div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ── COL 3: Alerts + Infrastructure ── -->
+  <div style="display:flex;flex-direction:column;gap:1rem">
+
+    <!-- Alerts — persistent -->
+    <div class="panel" style="flex:1">
+      <div class="panel-hdr ph-alert">
+        🔔 Event Alerts
+        <span style="margin-left:auto;font-size:.6rem;color:var(--dim);font-weight:400">Alerts persist on screen</span>
+        <button onclick="clearAlerts()" style="background:rgba(255,255,255,.08);border:none;color:var(--dim);border-radius:3px;padding:.15rem .4rem;font-size:.62rem;cursor:pointer;margin-left:.5rem">Clear</button>
+      </div>
+      <div class="alert-box" id="alertBox">
+        <div class="no-alerts" id="noAlerts">Press RUN to start simulation</div>
+      </div>
+    </div>
+
+    <!-- Infrastructure -->
+    <div class="panel">
+      <div class="panel-hdr ph-infra">⚙️ Live Infrastructure Status</div>
+      <div class="infra-grid">
+        <div class="infra-item">
+          <div class="infra-icon">🤖</div>
+          <div class="infra-name">7 Claude AI Agents <span class="status idle" id="agentDot"></span></div>
+          <div class="infra-desc" id="agentStatus">Standby</div>
+        </div>
+        <div class="infra-item">
+          <div class="infra-icon">⛓️</div>
+          <div class="infra-name">Hyperledger <span class="status idle" id="hlDot"></span></div>
+          <div class="infra-desc" id="hlStatus">0 TPS</div>
+        </div>
+        <div class="infra-item">
+          <div class="infra-icon">🔐</div>
+          <div class="infra-name">ASHE Shield <span class="status idle" id="asheDot"></span></div>
+          <div class="infra-desc" id="asheStatus">Inactive</div>
+        </div>
+        <div class="infra-item">
+          <div class="infra-icon">⚛️</div>
+          <div class="infra-name">Quantum Layer <span class="status idle" id="qDot"></span></div>
+          <div class="infra-desc" id="qStatus">Offline</div>
+        </div>
+        <div class="infra-item">
+          <div class="infra-icon">🏦</div>
+          <div class="infra-name">SBLC Status <span class="status idle" id="sblcDot"></span></div>
+          <div class="infra-desc" id="sblcStatus">Not drawn</div>
+        </div>
+        <div class="infra-item">
+          <div class="infra-icon">⬡</div>
+          <div class="infra-name">DPR Token <span class="status idle" id="dprDot"></span></div>
+          <div class="infra-desc" id="dprStatus">Not launched</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ── FULL-WIDTH: 22-Year Flow Table ── -->
+  <div class="panel full-row">
+    <div class="panel-hdr ph-hc">📊 22-Year Financial Flow — SPV → HoldCo → GK Bharta (All values T USD unless stated)</div>
+    <div style="overflow-x:auto;padding:.5rem">
+      <table class="ftable" id="flowTable">
+        <thead>
+          <tr>
+            <th style="text-align:left">Year</th>
+            <th>Platform Rev</th>
+            <th>SPV EBITDA (3%)</th>
+            <th>SPV Tax</th>
+            <th>SPV PAT</th>
+            <th>Div → HoldCo (97%)</th>
+            <th>HC EBITDA (5%)</th>
+            <th>HC Tax</th>
+            <th>HC PAT</th>
+            <th>Div → GK Bharta (95%)</th>
+            <th>GK Cumulative Div</th>
+            <th>SPV Reserve</th>
+            <th>HC Reserve</th>
+            <th>GK Reinvested</th>
+          </tr>
+        </thead>
+        <tbody id="flowBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+</div><!-- /main -->
+
+<script>
+// ── Data ────────────────────────────────────────────────────────────────────
+const TAX = 0.25, SPV_EBITDA = 0.03, HC_EBITDA = 0.05;
+const SPV_DIV = 0.97, HC_DIV = 0.95;
+const SEED_B = 2.07; // billion USD
+
+const platformRev = [0.53,1.06,1.59,2.65,3.71,4.77,5.83,6.89,7.95,250.54,734.48,1459.98,2426.98,3394.01,4361.02,5329.14,6298.62,7269.60,8241.98,9214.35,10669.79,10709.63];
+const smartCities = [0,0,0,0,0,0,0,0,0,50,150,300,500,700,900,1100,1300,1500,1700,1900,2200,2200];
+const retroCities = [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,50,150,300,500,700,900,2200];
+const users_B    = [0.831,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6]; // billions
+const dprPrices  = [0,0,107,120,150,180,210,240,280,320,400,550,750,1000,1300,1700,2200,3000,4000,6000,20000,48897];
+
+const events = {
+  0:  {type:'seed',    msg:'💰 GK Bharta seeds HoldCo with USD 2.07B · DPR token architecture begins · Account isolation framework initialised'},
+  1:  {type:'ops',     msg:'📱 Platform tech built · 831M users onboarded · DPR wallets activated · Hyperledger live · Agent 1 KYC goes live'},
+  2:  {type:'ops',     msg:'👥 6B users fully onboarded · Trade cycles 2–5 complete · 70K TPS on Hyperledger · ASHE self-healing active'},
+  3:  {type:'ops',     msg:'✅ 6B users fully active · Trade cycles 6–10 complete · GK Bharta SEED RECOVERED from reinvested dividends'},
+  4:  {type:'ipo',     msg:'🏦 IPO $15T · DPR Token listed on 5 exchanges · Pledge Loan \$674B activated · Wave 0 land acquisition 500 sites · Tax: 25% on IPO structuring fees'},
+  5:  {type:'fpo',     msg:'🏗️ FPO 1 + ESG Bond Series I $5T issued · 130 cities break ground · SBLC MT760 drawn Tranche 1 · Depreciation begins on construction assets'},
+  6:  {type:'fpo',     msg:'🏗️ FPO 2 · 280 cities · PEAK CAPEX · SBLC peak drawdown · Loan interest accrual begins · Depreciation $0.88T/yr'},
+  7:  {type:'fpo',     msg:'🏗️ FPO 3 · 240 more cities · SBLC Tranche 3 · Agent 4 city-management AI active · Shareholder dividend suspended (pre-revenue)'},
+  8:  {type:'fpo',     msg:'🏗️ FPO 4 · 150 cities · QKD quantum network starts · MTN Programme opens · ESG bond interest accrual'},
+  9:  {type:'fpo',     msg:'🏗️ FPO 5 · 200 cities · ESG bond repayment schedule begins · Debt payoff pool seeded'},
+  10: {type:'fpo_rev', msg:'🏙️ FPO 6 · 50 SMART CITIES OPERATIONAL · First rental + employment revenue · FIRST DIVIDEND flowing SPV→HoldCo→GK Bharta · Tax event: SPV 25%, HC 25%'},
+  11: {type:'fpo_rev', msg:'🏙️ FPO 7 · 150 cumulative cities · $503B/yr rental · MTN Tranche 2 retirement begins · Shareholder dividend reinstated'},
+  12: {type:'fpo_rev', msg:'🏗️ FPO 8 · 300 cumulative cities · ESG bond first tranche redeemed · Depreciation offset against growing EBITDA'},
+  13: {type:'fpo_final',msg:'✅ FPO 9 FINAL · 500 cities · CAPITAL-RECOVERY BREAKEVEN · Cumulative PAT > total capital raised · Zero new external capital needed ever'},
+  14: {type:'rev',     msg:'💹 700 cities · Self-funded build · MTN Tranche 3 · SPV reserves growing · Interest paid from operating surplus'},
+  15: {type:'rev',     msg:'💹 900 cities · $4,802T cumulative retained earnings · Debt payoff Year 16.1 in sight · SBLC extinguished on city completions'},
+  16: {type:'rev_retro',msg:'🔄 1,100 smart + 50 RETROFIT cities earning · Retrofit yield stream begins · MTN retirement accelerates · GK Bharta dividends surge'},
+  17: {type:'rev_retro',msg:'🔄 1,300 smart + 150 retrofit · Regional HoldCo dividend throughput at $2.3T/yr · HC reserve growing · Depreciation tail reducing'},
+  18: {type:'rev_retro',msg:'🔄 1,500 smart + 300 retrofit · MTN final tranche issued · Tax payments $2T/yr range across all SPVs'},
+  19: {type:'rev_retro',msg:'🔄 1,700 smart + 500 retrofit · Debt payoff cascade: $6,059.59T surplus accumulated in payoff pool'},
+  20: {type:'rev_retro',msg:'🔄 1,900 smart + 700 retrofit · All debt retired · MTN prepaid · SBLC extinguished · Underwriters paid · TRUE DEBT-FREE'},
+  21: {type:'debt_free',msg:'🎯 2,200 smart + 900 retrofit · DEBT-FREE CONFIRMED (Year 16.1 cleared) · All 22yr debt obligations extinguished · GK Bharta surplus mode'},
+  22: {type:'terminal', msg:'🌟 TRUE TERMINAL: 2,200 smart + 2,200 retrofit = 4,400 CITIES · Revenue $10,709.63T · EV $96,672.24T · Token $48,897.86 · GK Bharta Net Worth $125,704.54T'},
+};
+
+const phases = {
+  1:'Platform Build',2:'User Onboarding',3:'Seed Recovery',4:'IPO Launch',
+  5:'FPO+ESG+SBLC',6:'Peak CapEx',7:'Construction',8:'QKD+MTN',
+  9:'Pre-Revenue',10:'First Revenue',11:'Ramp',12:'Peak Build',
+  13:'Capital Recovery',14:'Self-Funded',15:'Debt Paydown',
+  16:'Retrofit Online',17:'Dual Revenue',18:'MTN Final',
+  19:'Debt Cascade',20:'Debt Free',21:'Surplus Mode',22:'Terminal State'
+};
+
+// ── State ───────────────────────────────────────────────────────────────────
+let running = false, simTimer = null, currentYear = 0;
+let spvCumReserve = 0, hcCumReserve = 0, gkbCumDiv = 0;
+let breakEvenHit = false;
+
+// Pre-compute all rows
+const rows = [];
+let _spvRes=0,_hcRes=0,_gkbCum=0,_breakHit=false;
+for(let i=0;i<22;i++){
+  const y=i+1, rev=platformRev[i];
+  const spvEb=rev*SPV_EBITDA, spvTax=Math.max(spvEb,0)*TAX, spvPat=spvEb-spvTax;
+  const divUp=spvPat*SPV_DIV;
+  _spvRes+=spvPat*(1-SPV_DIV);
+  const hcEb=divUp*HC_EBITDA, hcTax=Math.max(hcEb,0)*TAX, hcPat=hcEb-hcTax;
+  const divGkb=hcPat*HC_DIV;
+  _hcRes+=hcPat*(1-HC_DIV);
+  _gkbCum+=divGkb;
+  const reinvested=!_breakHit;
+  if(!_breakHit&&_gkbCum>=SEED_B/1e12) _breakHit=true;
+  rows.push({y,rev,spvEb,spvTax,spvPat,divUp,hcEb,hcTax,hcPat,divGkb,
+    gkbCum:_gkbCum,spvRes:_spvRes,hcRes:_hcRes,reinvested,
+    smart:smartCities[i],retro:retroCities[i],users:users_B[i],dpr:dprPrices[i]});
+}
+
+// ── Build table ──────────────────────────────────────────────────────────────
+function buildTable(){
+  const tb=document.getElementById('flowBody');
+  tb.innerHTML='';
+  rows.forEach(r=>{
+    const tr=document.createElement('tr');
+    tr.id='row-y'+r.y;
+    const beY = rows.find(x=>x.gkbCum>=SEED_B/1e12)?.y;
+    tr.innerHTML=`
+      <td style="text-align:left;color:var(--gold);font-weight:700">Y${r.y}${r.y===beY?' ✅':''}</td>
+      <td class="pos">$${fmt(r.rev)}T</td>
+      <td>$${fmt(r.spvEb)}T</td>
+      <td class="neg">$${fmt(r.spvTax)}T</td>
+      <td class="pos">$${fmt(r.spvPat)}T</td>
+      <td class="neu">$${fmt(r.divUp)}T</td>
+      <td>$${fmt(r.hcEb)}T</td>
+      <td class="neg">$${fmt(r.hcTax)}T</td>
+      <td class="pos">$${fmt(r.hcPat)}T</td>
+      <td class="neu" style="color:var(--purple)">$${fmt(r.divGkb)}T</td>
+      <td style="color:var(--purple)">$${fmt(r.gkbCum)}T</td>
+      <td>$${fmt(r.spvRes)}T</td>
+      <td>$${fmt(r.hcRes)}T</td>
+      <td style="color:${r.reinvested?'var(--amber)':'var(--dim)'}">${r.reinvested?'↺ Reinvested':'→ Retained'}</td>`;
+    tb.appendChild(tr);
+  });
+}
+
+function fmt(v){
+  if(Math.abs(v)>=1000) return (v/1000).toFixed(2)+'K';
+  if(Math.abs(v)>=1)    return v.toFixed(3);
+  if(Math.abs(v)>=0.001) return v.toFixed(5);
+  return v.toExponential(2);
+}
+
+function fmtDPR(v){
+  if(v>=1000) return '$'+v.toLocaleString();
+  return '$'+v.toFixed(2);
+}
+
+// ── Alerts (persistent) ──────────────────────────────────────────────────────
+function addAlert(type, msg, year){
+  const box=document.getElementById('alertBox');
+  const na=document.getElementById('noAlerts');
+  if(na) na.remove();
+  const div=document.createElement('div');
+  div.className='alert '+type;
+  div.innerHTML=`<span class="alert-yr">Y${year}</span><span>${msg}</span>`;
+  box.insertBefore(div, box.firstChild); // newest at top
+}
+
+function clearAlerts(){
+  document.getElementById('alertBox').innerHTML='<div class="no-alerts" id="noAlerts">Alerts cleared — press RUN to restart</div>';
+}
+
+// ── Infrastructure status ────────────────────────────────────────────────────
+function setDot(id, active){
+  const d=document.getElementById(id);
+  d.className='status '+(active?'active':'idle');
+}
+function updateInfra(y){
+  const active=y>=1;
+  setDot('agentDot',active); document.getElementById('agentStatus').textContent=active?'7 agents live — '+[50,60,70,80,90,100,110][Math.min(y-1,6)]+'K events/hr':'Standby';
+  setDot('hlDot',active); document.getElementById('hlStatus').textContent=active?Math.min(y*10000,70000).toLocaleString()+' TPS':'0 TPS';
+  setDot('asheDot',y>=2); document.getElementById('asheStatus').textContent=y>=2?'Active — <120ms recovery':'Inactive';
+  setDot('qDot',y>=8); document.getElementById('qStatus').textContent=y>=8?'QKD live — '+Math.min(y-7,2200)+' nodes':'Offline';
+  setDot('sblcDot',y>=5&&y<=15); document.getElementById('sblcStatus').textContent=y<5?'Not drawn':(y<=15?'MT760 active — $'+Math.min((y-4)*40,640).toFixed(0)+'B drawn':'Extinguished ✓');
+  setDot('dprDot',y>=4); document.getElementById('dprStatus').textContent=y>=4?'Live on 5 exchanges — $'+rows[Math.min(y,22)-1].dpr.toLocaleString():'Not launched';
+}
+
+// ── Dividend alert ───────────────────────────────────────────────────────────
+function addDivAlert(r){
+  if(r.divGkb<=0) return;
+  const beB = SEED_B/1e12;
+  const tag = r.gkbCum<beB?'tax_event':'div_event';
+  const reinTag = r.reinvested?'↺ Reinvested into system':'→ Retained by GK Bharta';
+  addAlert(tag,`💸 Dividend GK Bharta: $${fmt(r.divGkb)}T · Cumulative: $${fmt(r.gkbCum)}T · ${reinTag} · HC Tax: $${fmt(r.hcTax)}T · SPV Tax: $${fmt(r.spvTax)}T`,r.y);
+}
+
+// ── Step ─────────────────────────────────────────────────────────────────────
+function step(y){
+  // y is 1-based (year number, index = y-1)
+  const r = rows[y-1];
+
+  // Year display
+  document.getElementById('yrNum').textContent = 'Y'+y;
+  document.getElementById('yrLabel').textContent = phases[y]||'Programme';
+  document.getElementById('progPct').textContent = Math.round(y/22*100)+'%';
+  document.getElementById('progFill').style.width = (y/22*100)+'%';
+  document.getElementById('phaseLabel').textContent = phases[y]||'—';
+
+  // Users
+  const uB = Math.min(r.users, 6);
+  document.getElementById('userCount').textContent = uB.toFixed(2)+'B / 6.0B';
+  document.getElementById('walletCount').textContent = uB.toFixed(2)+'B wallets';
+  document.getElementById('userFill').style.width = (uB/6*100)+'%';
+  document.getElementById('walletFill').style.width = (uB/6*100)+'%';
+  document.getElementById('residentCount').textContent = (r.smart*2.5/1000).toFixed(2)+'B';
+  document.getElementById('txPerSec').textContent = (Math.min(y*3000,70000)/1000).toFixed(1)+'K';
+  document.getElementById('dprPrice').textContent = fmtDPR(r.dpr);
+
+  // Cities
+  document.getElementById('smartCount').textContent = r.smart.toLocaleString()+' / 2,200';
+  document.getElementById('retroCount').textContent = r.retro.toLocaleString()+' / 2,200';
+  document.getElementById('totalCities').textContent = (r.smart+r.retro).toLocaleString()+' / 4,400';
+  document.getElementById('smartFill').style.width = (r.smart/2200*100)+'%';
+  document.getElementById('retroFill').style.width = (r.retro/2200*100)+'%';
+
+  // SPV
+  document.getElementById('spvRev').textContent = '$'+fmt(r.rev)+'T';
+  document.getElementById('spvEbitda').textContent = '$'+fmt(r.spvEb)+'T';
+  document.getElementById('spvPat').textContent = '$'+fmt(r.spvPat)+'T';
+  document.getElementById('spvDiv').textContent = '$'+fmt(r.divUp)+'T';
+  document.getElementById('spvReserve').textContent = '$'+fmt(r.spvRes)+'T';
+  document.getElementById('spvTax').textContent = '$'+fmt(r.spvTax)+'T';
+
+  // HoldCo
+  document.getElementById('hcEbitda').textContent = '$'+fmt(r.hcEb)+'T';
+  document.getElementById('hcPat').textContent = '$'+fmt(r.hcPat)+'T';
+  document.getElementById('hcDiv').textContent = '$'+fmt(r.divGkb)+'T';
+  document.getElementById('hcReserve').textContent = '$'+fmt(r.hcRes)+'T';
+  document.getElementById('gkbCumDiv').textContent = '$'+fmt(r.gkbCum)+'T';
+
+  // Flow diagram
+  document.getElementById('flowSpvRev').textContent = '$'+fmt(r.rev)+'T';
+  document.getElementById('flowSpvDiv').textContent = '$'+fmt(r.divUp)+'T';
+  document.getElementById('flowHcPat').textContent = '$'+fmt(r.hcPat)+'T';
+  document.getElementById('flowGkbDiv').textContent = '$'+fmt(r.divGkb)+'T';
+
+  // Breakeven
+  const beB = SEED_B/1e12;
+  if(r.gkbCum>=beB&&!breakEvenHit){
+    breakEvenHit=true;
+    document.getElementById('breakEvenStatus').textContent='✅ Y'+y+' RECOVERED';
+    document.getElementById('breakEvenStatus').style.color='var(--green)';
+    addAlert('fpo_final','🎯 BREAKEVEN: GK Bharta cumulative dividends $'+fmt(r.gkbCum)+'T exceed seed $'+SEED_B+'B · Profit reinvestment phase ends',y);
+  }
+  const be=document.getElementById('gkbStatus');
+  be.textContent = r.reinvested?'↺ Reinvesting':'✅ Surplus Mode';
+  be.style.color = r.reinvested?'var(--amber)':'var(--green)';
+
+  // Event alert
+  const ev=events[y];
+  if(ev) addAlert(ev.type, ev.msg, y);
+
+  // Dividend alert (starting from revenue years)
+  if(r.divGkb>0.00001) addDivAlert(r);
+
+  // Infrastructure
+  updateInfra(y);
+
+  // Highlight table row
+  document.querySelectorAll('.ftable tr').forEach(tr=>tr.classList.remove('active-yr'));
+  const activeRow=document.getElementById('row-y'+y);
+  if(activeRow){activeRow.classList.add('active-yr'); activeRow.scrollIntoView({block:'nearest',behavior:'smooth'});}
+}
+
+// ── Run / Stop ───────────────────────────────────────────────────────────────
+function runSimulation(){
+  if(running){
+    clearInterval(simTimer); running=false;
+    document.getElementById('runBtn').textContent='▶ RUN SIMULATION';
+    document.getElementById('runBtn').disabled=false;
+    return;
+  }
+  // Reset
+  currentYear=0; breakEvenHit=false;
+  document.getElementById('breakEvenStatus').textContent='Pending';
+  document.getElementById('breakEvenStatus').style.color='var(--dim)';
+  clearAlerts();
+  document.querySelectorAll('.ftable tr').forEach(tr=>tr.classList.remove('active-yr'));
+
+  // Seed event
+  addAlert('seed','💰 SIMULATION START · GK Bharta (Dubai) seeds USD 2.07B into Delper GCCP Holdings Pte Ltd, Singapore · DPR token ecosystem initialised',0);
+
+  running=true;
+  document.getElementById('runBtn').textContent='⏹ STOP';
+
+  function tick(){
+    currentYear++;
+    if(currentYear>22){
+      clearInterval(simTimer); running=false;
+      document.getElementById('runBtn').textContent='▶ RUN AGAIN';
+      addAlert('terminal','✅ SIMULATION COMPLETE — 22 Years · 4,400 Cities · 6B Users · GK Bharta Net Worth $125,704.54T · EV $96,672.24T',22);
+      return;
+    }
+    const speed=parseInt(document.getElementById('speed').value)||800;
+    step(currentYear);
+  }
+  tick(); // immediate first step
+  const speed=parseInt(document.getElementById('speed').value)||800;
+  simTimer=setInterval(()=>{
+    if(!running){clearInterval(simTimer);return;}
+    const s=parseInt(document.getElementById('speed').value)||800;
+    tick();
+  }, speed);
+}
+
+// ── Init ─────────────────────────────────────────────────────────────────────
+buildTable();
+</script>
+</body>
+</html>
